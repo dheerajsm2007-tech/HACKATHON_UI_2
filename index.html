@@ -4,302 +4,429 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AEGIS | Ultra-Premium Security Analytics</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="alerts.css">
+    <title>AEGIS // SOC Command Center</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
+    <!-- Scripts & CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'aegis-blue': '#3B82F6',
+                        'aegis-red': '#EF4444',
+                        'aegis-orange': '#F97316',
+                        'aegis-green': '#10B981',
+                        'bg-black': '#000000',
+                        'bg-card': 'rgba(20, 25, 40, 0.4)',
+                    },
+                    fontFamily: {
+                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'inter': ['Inter', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'scan-wave': 'scan 2s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --glow-blue: 0 0 20px rgba(59, 130, 246, 0.4);
+            --glow-red: 0 0 20px rgba(239, 68, 68, 0.4);
+            --glow-orange: 0 0 20px rgba(249, 115, 22, 0.4);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #000000 100%);
+            background-color: #000;
+            overflow-x: hidden;
+            color: #fff;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .soc-grid-bg {
+            background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        @keyframes scan {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            to {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+        }
+
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--aegis-blue), transparent);
+            box-shadow: 0 0 15px var(--aegis-blue);
+            animation: scan 3s linear infinite;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
 </head>
 
-<body class="premium-theme">
-    <!-- Cursor Trail Container -->
-    <div id="cursor-trail-container"></div>
-    <!-- Header -->
-    <!-- Header -->
-    <header class="header">
-        <div class="header-left">
-            <nav class="header-nav">
-                <a href="index.html" class="nav-link active">DASHBOARD</a>
-                <a href="all-alerts.html" class="nav-link">ALERTS</a>
-            </nav>
-        </div>
+<body class="font-inter min-h-screen soc-grid-bg relative selection:bg-aegis-blue selection:text-white">
 
-        <div class="header-center">
-            <h1 class="aegis-title">AEGIS</h1>
-        </div>
+    <!-- Background Elements -->
+    <div id="particle-container" class="fixed inset-0 pointer-events-none opacity-40 z-0"></div>
 
-        <div class="header-right">
-            <div class="premium-logo-container">
-                <div class="glass-bg"></div>
-                <svg width="40" height="40" viewBox="0 0 32 32" fill="none" class="aegis-shield-logo">
-                    <path d="M16 2L4 8V16C4 23.732 9.268 30 16 30C22.732 30 28 23.732 28 16V8L16 2Z"
-                        fill="url(#premiumShieldGradient)" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" />
-                    <defs>
-                        <linearGradient id="premiumShieldGradient" x1="16" y1="2" x2="16" y2="30"
-                            gradientUnits="userSpaceOnUse">
-                            <stop offset="0%" stop-color="#3B82F6" />
-                            <stop offset="50%" stop-color="#1D4ED8" />
-                            <stop offset="100%" stop-color="#000000" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M12 16L15 19L20 13" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                </svg>
-                <div class="logo-glow"></div>
+    <!-- Main Navigation / Header -->
+    <header
+        class="sticky top-0 z-50 p-4 px-8 flex justify-between items-center glass-card rounded-none border-t-0 border-x-0 bg-opacity-80">
+        <div class="flex items-center gap-4">
+            <div
+                class="p-2 glass-card border-aegis-blue/30 rotate-45 transform hover:rotate-180 transition-transform duration-500">
+                <i data-lucide="shield" class="w-6 h-6 text-aegis-blue -rotate-45"></i>
             </div>
-            <button class="icon-btn" id="loginIcon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
+            <div>
+                <h1
+                    class="font-orbitron text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white to-aegis-blue">
+                    AEGIS
+                </h1>
+                <p class="text-[10px] tracking-[.3em] font-orbitron opacity-60">PROMPT DETECTION ENGINE</p>
+            </div>
+        </div>
+
+        <!-- Dynamic System State Banner -->
+        <div id="status-banner" class="flex items-center gap-6 px-6 py-2 glass-card border-aegis-blue/20">
+            <div class="flex items-center gap-3">
+                <div id="status-indicator"
+                    class="w-2 h-2 rounded-full bg-aegis-blue animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]">
+                </div>
+                <span id="status-text"
+                    class="font-orbitron font-bold text-xs tracking-widest uppercase text-aegis-blue">System
+                    Stable</span>
+            </div>
+            <div class="h-4 w-[1px] bg-white/10"></div>
+            <div class="flex items-center gap-3 opacity-60 hover:opacity-100 transition-opacity cursor-help"
+                title="Live monitoring secured endpoint">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+                <span class="text-[10px] font-mono">LATENCY: <span id="header-latency">0</span>ms</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Mode Switcher -->
+            <div class="flex p-1 glass-card bg-black/40 text-[10px] font-bold tracking-tighter">
+                <button id="live-mode-btn" class="px-3 py-1 rounded-md transition-all">LIVE</button>
+                <button id="demo-mode-btn" class="px-3 py-1 rounded-md bg-aegis-blue text-white shadow-lg">DEMO</button>
+            </div>
+            <button class="icon-btn p-2 hover:bg-white/5 rounded-lg transition-all relative">
+                <i data-lucide="settings" class="w-5 h-5 opacity-60"></i>
             </button>
+            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-aegis-blue to-purple-600 p-[1px]">
+                <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dheer" alt="User">
+                </div>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Title Section -->
-        <div class="title-section">
-            <div class="title-left">
-                <h2 class="main-title">ANALYTICS COMMAND</h2>
-                <p class="subtitle">PROJECT AEGIS: SECURE PROTOCOL ACTIVE</p>
-            </div>
-            <div class="title-right">
-                <div class="live-indicator">
-                    <div class="live-dot"></div>
-                    SYSTEM STATE: STABLE
-                </div>
-                <button class="export-btn btn-primary">GENERATE REPORT</button>
-            </div>
-        </div>
+    <main class="max-w-[1700px] mx-auto p-8 relative z-10">
 
-
-
-        <!-- Metrics Cards -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-label">TOTAL REQUESTS</span>
-                    <div class="metric-icon spinning">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 2V6M12 18V22M6 12H2M22 12H18M19.07 19.07L16.24 16.24M19.07 4.93L16.24 7.76M4.93 19.07L7.76 16.24M4.93 4.93L7.76 7.76"
-                                stroke="#3B82F6" stroke-width="2" stroke-linecap="round" />
-                        </svg>
+        <!-- Top Row: Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Requests -->
+            <div
+                class="metric-card glass-card p-6 group cursor-default transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] relative overflow-hidden">
+                <div class="scanning-line opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-aegis-blue/10 rounded-xl group-hover:scale-110 transition-transform">
+                        <i data-lucide="zap" class="w-6 h-6 text-aegis-blue"></i>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-white/40 uppercase tracking-widest">Global Traffic</span>
                     </div>
                 </div>
-                <div class="metric-value" data-target="1200000">0</div>
-                <div class="metric-trend positive">
-                    <span>^</span> 5.2%
-                </div>
-                <div class="metric-description">Total requests processed</div>
-            </div>
-
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-label">THREATS BLOCKED</span>
-                    <div class="metric-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L4 7V12C4 17.523 7.582 22.442 12 23C16.418 22.442 20 17.523 20 12V7L12 2Z"
-                                fill="#EF4444" stroke="#DC2626" stroke-width="2" />
-                            <path d="M9 12L11 14L15 10" stroke="white" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="metric-value">0</div>
-                <div class="metric-trend neutral">
-                    <span>-</span> 0.0%
-                </div>
-                <div class="metric-description">Waiting for data...</div>
-            </div>
-
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-label">AVG LATENCY ADDED</span>
-                    <div class="metric-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="#F97316" stroke-width="2" />
-                            <path d="M12 6V12L16 14" stroke="#F97316" stroke-width="2" stroke-linecap="round" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="metric-value">0</div>
-                <span class="metric-unit">ms</span>
-                <div class="metric-trend neutral">
-                    <span>-</span> 0.0%
-                </div>
-                <div class="metric-description">Waiting for data...</div>
-            </div>
-
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-label">TOP THREAT VECTOR</span>
-                    <div class="metric-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z"
-                                fill="#A855F7" stroke="#9333EA" stroke-width="2" />
-                            <circle cx="12" cy="9" r="3" fill="white" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="metric-value-text">None</div>
-                <div class="metric-trend neutral">
-                    <span>-</span>
-                </div>
-                <div class="metric-description">No threats detected</div>
-            </div>
-        </div>
-
-        <!-- Charts Grid -->
-        <div class="charts-grid">
-            <!-- Prompt Injection Alerts -->
-            <div class="chart-card large">
-                <div class="chart-header">
-                    <h3 class="chart-title">🚨 Prompt Injection Alerts - Real Time</h3>
-                    <div class="live-indicator" style="margin-left: auto;">
-                        <span class="live-dot"></span>
-                        <span>Live</span>
-                    </div>
-                </div>
-                <div class="alerts-container">
-                    <table class="alerts-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Attack Type</th>
-                                <th>Severity</th>
-                                <th>Prompt Preview</th>
-                                <th>Source IP</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alertsBody">
-                            <!-- Populated dynamically from database -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="alerts-footer">
-                    <span>Showing latest 5 alerts</span>
-                    <a href="all-alerts.html" class="view-details-link">View All Alerts →</a>
+                <div class="metric-value font-orbitron text-4xl font-extrabold mb-1" id="total-requests">0</div>
+                <div class="text-xs font-medium text-aegis-blue opacity-80 flex items-center gap-1">
+                    <i data-lucide="trending-up" class="w-3 h-3"></i>
+                    Total Requests Scanned
                 </div>
             </div>
 
-            <!-- Threat Distribution -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Threat Distribution</h3>
+            <!-- Threats Blocked -->
+            <div
+                class="metric-card glass-card p-6 group transition-all duration-300 hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] relative overflow-hidden">
+                <div id="threat-indicator-glow" class="absolute inset-0 bg-red-500/0 transition-colors duration-500">
                 </div>
-                <div class="chart-container">
-                    <canvas id="threatChart"></canvas>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-red-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                        <i data-lucide="shield-alert" id="shield-icon" class="w-6 h-6 text-red-500"></i>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-white/40 uppercase tracking-widest">Deflections</span>
+                    </div>
                 </div>
-                <div class="chart-legend">
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background: #EF4444;"></span>
-                        <span>DAN Attacks</span>
-                        <span class="legend-value">0%</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background: #F97316;"></span>
-                        <span>Roleplay</span>
-                        <span class="legend-value">0%</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background: #EAB308;"></span>
-                        <span>Obfuscation</span>
-                        <span class="legend-value">0%</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background: #3B82F6;"></span>
-                        <span>Injection</span>
-                        <span class="legend-value">0%</span>
-                    </div>
+                <div class="metric-value font-orbitron text-4xl font-extrabold mb-1" id="threats-blocked">0</div>
+                <div class="text-xs font-medium text-red-500 opacity-80 flex items-center gap-1">
+                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                    Injections Neutralized
                 </div>
             </div>
 
-            <!-- Latency Impact Analysis -->
-            <div class="chart-card large">
-                <div class="chart-header">
-                    <h3 class="chart-title">Latency Impact Analysis</h3>
-                    <p class="chart-subtitle">Comparison of native response vs secured response.</p>
+            <!-- Avg Latency -->
+            <div class="metric-card glass-card p-6 group transition-all hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-orange-500/10 rounded-xl group-hover:rotate-12 transition-transform">
+                        <i data-lucide="clock" id="clock-icon" class="w-6 h-6 text-orange-500"></i>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-white/40 uppercase tracking-widest">Inspection Cost</span>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="latencyChart"></canvas>
+                <div class="flex items-baseline gap-2">
+                    <div class="metric-value font-orbitron text-4xl font-extrabold mb-1" id="avg-latency">0</div>
+                    <span class="text-xl font-bold opacity-40">ms</span>
+                </div>
+                <div class="text-xs font-medium text-orange-400 opacity-80 flex items-center gap-1">
+                    <i data-lucide="gauge" class="w-3 h-3"></i>
+                    SLA: <span class="text-aegis-green font-bold" id="sla-text">Within Limits</span>
+                </div>
+            </div>
+
+            <!-- Top Vector -->
+            <div class="metric-card glass-card p-6 group transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-purple-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                        <i data-lucide="target" class="w-6 h-6 text-purple-500"></i>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-white/40 uppercase tracking-widest">Active Vector</span>
+                    </div>
+                </div>
+                <div class="metric-value font-orbitron text-2xl font-extrabold mb-1 truncate" id="top-threat">NONE</div>
+                <div class="text-xs font-medium text-purple-400 opacity-80 flex items-center gap-1">
+                    <i data-lucide="crosshair" class="w-3 h-3"></i>
+                    Primary Attack Pattern
                 </div>
             </div>
         </div>
 
+        <!-- Middle Row: Main Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+
+            <!-- Left: Timeline (Replaces Boring Table) -->
+            <div class="xl:col-span-2 space-y-4">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="font-orbitron text-lg font-bold tracking-widest">THREAT INTELLIGENCE STREAM</h3>
+                        <p class="text-xs text-white/40">Real-time signal analysis & pattern matching</p>
+                    </div>
+                    <div class="relative w-64">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40"></i>
+                        <input type="text" placeholder="Search signals..."
+                            class="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-xs focus:outline-none focus:border-aegis-blue transition-colors">
+                    </div>
+                </div>
+
+                <!-- Empty State (System Armed) -->
+                <div id="timeline-empty-state"
+                    class="glass-card p-12 flex flex-col items-center justify-center text-center group">
+                    <div class="relative mb-6">
+                        <div class="absolute inset-0 bg-aegis-blue/20 blur-2xl rounded-full scale-150 animate-pulse">
+                        </div>
+                        <i data-lucide="shield-check" class="w-16 h-16 text-aegis-blue relative z-10"></i>
+                    </div>
+                    <h4 class="font-orbitron text-xl font-bold tracking-widest mb-2">SYSTEM ARMED</h4>
+                    <p class="text-sm text-white/40 max-w-md mx-auto leading-relaxed">Awaiting incoming traffic.
+                        Security protocol AEGIS-1 is initialized and actively monitoring all secured endpoints.</p>
+
+                    <!-- Scanning Grid UI -->
+                    <div class="mt-8 grid grid-cols-4 gap-2 w-full max-w-xs opacity-20">
+                        <div class="h-2 bg-aegis-blue/50 rounded animate-pulse"></div>
+                        <div class="h-2 bg-aegis-blue/30 rounded animate-pulse [animation-delay:200ms]"></div>
+                        <div class="h-2 bg-aegis-blue/50 rounded animate-pulse [animation-delay:400ms]"></div>
+                        <div class="h-2 bg-aegis-blue/30 rounded animate-pulse [animation-delay:600ms]"></div>
+                    </div>
+                </div>
+
+                <div id="threat-timeline" class="hidden space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                    <!-- Timeline entries will be injected here -->
+                </div>
+            </div>
+
+            <!-- Right: Insights & Charts -->
+            <div class="space-y-6">
+                <!-- Threat Distribution -->
+                <div class="glass-card p-6">
+                    <h3 class="font-orbitron text-xs font-bold tracking-[.3em] opacity-60 mb-6 uppercase">Vector
+                        Intelligence</h3>
+                    <div class="relative aspect-square w-full mb-6">
+                        <canvas id="threat-chart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span class="text-xs uppercase tracking-tighter opacity-40">Confidence</span>
+                            <span class="text-2xl font-black font-orbitron text-aegis-blue">94%</span>
+                        </div>
+                    </div>
+                    <div id="chart-legend" class="space-y-2">
+                        <!-- Legend items injected here -->
+                    </div>
+                </div>
+
+                <!-- Latency Impact Comparison -->
+                <div class="glass-card p-6 overflow-hidden relative">
+                    <h3 class="font-orbitron text-xs font-bold tracking-[.3em] opacity-60 mb-6 uppercase">Latency
+                        Overhead</h3>
+
+                    <div class="space-y-6">
+                        <div class="relative pt-4">
+                            <div class="flex justify-between text-[10px] font-bold uppercase mb-2">
+                                <span class="text-aegis-green">Native Stream</span>
+                                <span class="opacity-60 text-white" id="native-latency-label">~12ms</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div id="native-bar" class="h-full bg-aegis-green w-0 transition-all duration-1000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="relative pt-2">
+                            <div class="flex justify-between text-[10px] font-bold uppercase mb-2">
+                                <span class="text-aegis-blue">AEGIS Protected</span>
+                                <span class="opacity-60 text-white" id="secured-latency-label">~0ms</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div id="secured-bar"
+                                    class="h-full bg-aegis-blue w-0 transition-all duration-1000 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 p-3 bg-aegis-blue/5 border border-aegis-blue/20 rounded-lg flex items-start gap-3">
+                        <i data-lucide="info" class="w-4 h-4 text-aegis-blue mt-0.5"></i>
+                        <p class="text-[10px] leading-relaxed opacity-60 italic">AEGIS security overhead is minimal and
+                            always kept within a 50ms SLA to ensure real-time user experiences.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
-    <!-- Cyberpunk Login Modal -->
-    <div id="loginModal" class="login-modal">
-        <div class="login-container">
-            <div class="cyberpunk-border">
-                <div class="login-content">
-                    <div class="login-header">
-                        <div class="cyberpunk-logo">
-                            <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
-                                <path d="M16 2L4 8V16C4 23.732 9.268 30 16 30C22.732 30 28 23.732 28 16V8L16 2Z"
-                                    fill="url(#shieldGradient)" stroke="#00FFFF" stroke-width="2" />
-                                <defs>
-                                    <linearGradient id="shieldGradient" x1="16" y1="2" x2="16" y2="30"
-                                        gradientUnits="userSpaceOnUse">
-                                        <stop offset="0%" stop-color="#00FFFF" />
-                                        <stop offset="100%" stop-color="#FF00FF" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                        </div>
-                        <h2 class="cyberpunk-title">GENAI SENTINEL</h2>
-                        <p class="cyberpunk-subtitle">SECURE ACCESS PROTOCOL</p>
-                    </div>
+    <!-- Real-time Threat Popups (Stack) -->
+    <div id="alert-stack" class="fixed top-24 right-8 z-[100] w-96 flex flex-col gap-4 pointer-events-none">
+        <!-- Alerts slide in here from the right -->
+    </div>
 
-                    <form id="loginForm" class="login-form">
-                        <div class="input-group">
-                            <label class="cyberpunk-label">USERNAME</label>
-                            <input type="text" id="username" class="cyberpunk-input" placeholder="ENTER USERNAME"
-                                required>
-                            <div class="input-glow"></div>
-                        </div>
+    <!-- Explainability Modal (XAI) -->
+    <div id="xai-modal" class="fixed inset-0 z-[200] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md opacity-0" id="modal-overlay"></div>
+        <div class="glass-card w-full max-w-2xl p-8 relative z-10 translate-y-20 opacity-0" id="modal-content">
+            <button class="absolute top-6 right-6 hover:rotate-90 transition-transform" onclick="closeXAIModal()">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
 
-                        <div class="input-group">
-                            <label class="cyberpunk-label">PASSWORD</label>
-                            <input type="password" id="password" class="cyberpunk-input" placeholder="ENTER PASSWORD"
-                                required>
-                            <div class="input-glow"></div>
-                        </div>
-
-                        <div class="error-message" id="errorMessage"></div>
-
-                        <button type="submit" class="cyberpunk-button">
-                            <span>ACCESS GRANTED</span>
-                            <div class="button-glow"></div>
-                        </button>
-                    </form>
-
-                    <div class="cyberpunk-footer">
-                        <div class="scan-line"></div>
-                        <p>SYSTEM STATUS: <span class="status-online">ONLINE</span></p>
-                    </div>
+            <div class="flex items-center gap-4 mb-8">
+                <div class="p-3 bg-red-500/10 rounded-xl">
+                    <i data-lucide="brain-circuit" class="w-8 h-8 text-red-500"></i>
                 </div>
+                <div>
+                    <h2 class="font-orbitron text-2xl font-bold tracking-widest">SIGNAL RATIONALE</h2>
+                    <p class="text-xs text-white/40 uppercase tracking-tighter">Explainable Security Decision (XAI)</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mb-8">
+                <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-1 block">Rule Triggered</span>
+                    <p class="text-sm font-bold font-orbitron tracking-tight" id="xai-rule">-</p>
+                </div>
+                <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-1 block">Risk Category</span>
+                    <p class="text-sm font-bold text-red-400 font-orbitron tracking-tight" id="xai-category">-</p>
+                </div>
+                <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-1 block">Confidence Score</span>
+                    <p class="text-sm font-bold text-aegis-blue font-orbitron tracking-tight" id="xai-confidence">0.00%
+                    </p>
+                </div>
+                <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-1 block">Action Taken</span>
+                    <p class="text-sm font-bold text-aegis-green font-orbitron tracking-tight uppercase"
+                        id="xai-action">Sanitized</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-2 block">Detected Pattern</span>
+                    <pre class="bg-black/60 p-4 rounded-lg font-mono text-sm text-red-300/80 border border-red-500/20 whitespace-pre-wrap select-all"
+                        id="xai-pattern"></pre>
+                </div>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-white/40 mb-2 block">System Conclusion</span>
+                    <p class="text-sm text-white/70 leading-relaxed italic" id="xai-conclusion"></p>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button onclick="closeXAIModal()"
+                    class="px-8 py-3 glass-card bg-aegis-blue text-white font-bold tracking-widest text-xs hover:scale-105 active:scale-95 transition-all">CLOSE
+                    REPORT</button>
             </div>
         </div>
     </div>
 
-    <link rel="stylesheet" href="login-errors.css">
-    <script src="script.js"></script>
-    <script src="login.js"></script>
-    <script src="latency-metrics.js"></script>
-    <script src="security-metrics.js"></script>
+    <!-- Main Logic Script -->
+    <script src="soc-engine.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>
